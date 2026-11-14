@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" id="themeColor" content="#1A1A1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="중고폰 액정 잔상·터치 검수용 단색 화면">
+<title>예스통신 액정 검수</title>
+<style>
+  :root{
+    --bg:#1A1A1A;
+    --ui-fg:#ffffff;
+    --ui-bg:rgba(0,0,0,.42);
+    --ui-line:rgba(255,255,255,.42);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0;
+    height:100%;
+    background:var(--bg);
+    overflow:hidden;
+    overscroll-behavior:none;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-text-size-adjust:100%;
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  }
+  #stage{
+    position:fixed; left:0; top:0;
+    width:100%; height:100vh; height:100dvh;
+    background:var(--bg);
+    touch-action:none;
+    overflow:hidden;
+  }
+
+  /* ---------- 안내 문구 ---------- */
+  #hint{
+    position:absolute;
+    left:0; right:0;
+    top:calc(env(safe-area-inset-top, 0px) + 16px);
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .45s ease;
+    z-index:5;
+  }
+  #hint .pill{
+    background:var(--ui-bg); color:var(--ui-fg);
+    border:1px solid var(--ui-line);
+    border-radius:999px;
+    padding:9px 18px;
+    font-size:15px; font-weight:600;
+    letter-spacing:-.2px;
+    line-height:1.25;
+    max-width:88vw;
+    text-align:center;
+    word-break:keep-all;
+  }
+  #hint .sub{
+    font-size:12.5px; font-weight:500;
+    color:var(--ui-fg); opacity:.72;
+    letter-spacing:-.1px;
+    text-align:center;
+  }
+  #dots{display:flex; gap:5px; margin-top:2px;}
+  #dots i{
+    width:5px; height:5px; border-radius:50%;
+    background:var(--ui-fg); opacity:.35; display:block;
+  }
+  #dots i.on{opacity:.95;}
+
+  /* ---------- 메뉴 버튼 ---------- */
+  #menuBtn{
+    position:fixed;
+    right:calc(env(safe-area-inset-right, 0px) + 10px);
+    top:calc(env(safe-area-inset-top, 0px) + 10px);
+    z-index:20;
+    appearance:none;
+    font:600 12px/1 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    letter-spacing:.2px;
+    color:#fff;
+    background:rgba(0,0,0,.30);
+    border:1px solid rgba(255,255,255,.45);
+    border-radius:999px;
+    padding:9px 13px;
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    opacity:.92;
+  }
+  #menuBtn:active{opacity:.6;}
+
+  /* ---------- 터치 테스트 ---------- */
+  #touchLayer{
+    position:absolute; inset:0;
+    display:none;
+    background:#0B0B0B;
+    z-index:3;
+  }
+  #touchLayer.on{display:block;}
+  #touchLayer canvas{
+    position:absolute; left:0; top:0; display:block;
+    touch-action:none;
+  }
+  #badge{
+    position:absolute;
+    left:50%; transform:translateX(-50%);
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 14px);
+    z-index:6;
+    background:rgba(0,0,0,.55);
+    color:#eaffea;
+    border:1px solid rgba(255,255,255,.28);
+    border-radius:999px;
+    padding:8px 15px;
+    font-size:13px; font-weight:600;
+    letter-spacing:-.1px;
+    display:none;
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  #badge.on{display:block;}
+  #badge.done{
+    background:rgba(0,255,60,.92);
+    color:#04140a;
+    border-color:rgba(255,255,255,.6);
+  }
+  #resetBtn{
+    position:absolute;
+    right:calc(env(safe-area-inset-right, 0px) + 12px);
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);
+    z-index:6;
+    display:none;
+    appearance:none;
+    font:600 13px/1 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    color:#fff;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.42);
+    border-radius:999px;
+    padding:11px 16px;
+  }
+  #resetBtn.on{display:block;}
+  #resetBtn:active{background:rgba(255,255,255,.3);}
+
+  /* ---------- 선택 패널 ---------- */
+  #panel{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    z-index:30;
+    background:rgba(14,14,16,.93);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-top-left-radius:20px; border-top-right-radius:20px;
+    border-top:1px solid rgba(255,255,255,.14);
+    padding:10px 14px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    transform:translateY(112%);
+    transition:transform .28s cubic-bezier(.22,.8,.28,1);
+    color:#fff;
+    box-shadow:0 -12px 40px rgba(0,0,0,.5);
+  }
+  #panel.on{transform:translateY(0);}
+  #panel .grip{
+    width:40px; height:4px; border-radius:2px;
+    background:rgba(255,255,255,.28);
+    margin:2px auto 12px;
+  }
+  #panel .ttl{
+    font-size:11.5px; font-weight:600; letter-spacing:.4px;
+    color:rgba(255,255,255,.55);
+    margin:0 2px 9px;
+  }
+  #chips{
+    display:grid; grid-template-columns:1fr 1fr; gap:8px;
+  }
+  .chip{
+    display:flex; align-items:center; gap:9px;
+    appearance:none; text-align:left;
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:13px;
+    padding:10px 11px;
+    color:#fff;
+    font:600 14px/1.2 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    letter-spacing:-.2px;
+  }
+  .chip .sw{
+    width:20px; height:20px; border-radius:6px; flex:none;
+    border:1px solid rgba(255,255,255,.42);
+    background-size:100% 100%;
+  }
+  .chip .tx{display:flex; flex-direction:column; gap:2px; min-width:0;}
+  .chip .tx small{
+    font-size:10.5px; font-weight:500; color:rgba(255,255,255,.5);
+    letter-spacing:-.1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .chip.on{
+    background:rgba(255,255,255,.93); color:#0b0b0c;
+    border-color:rgba(255,255,255,.93);
+  }
+  .chip.on .tx small{color:rgba(0,0,0,.45);}
+  #panel .foot{
+    display:flex; gap:8px; margin-top:10px;
+  }
+  #panel .foot button{
+    flex:1;
+    appearance:none;
+    font:600 13.5px/1 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    color:#fff; background:rgba(255,255,255,.09);
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:12px; padding:13px 6px;
+  }
+  #panel .foot button:active{background:rgba(255,255,255,.22);}
+  #closeBtn{flex:0 0 74px !important;}
+  @media (max-height:560px){
+    .chip{padding:8px 10px; font-size:13px;}
+    .chip .tx small{display:none;}
+    #panel .foot button{padding:10px 6px;}
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="touchLayer">
+    <canvas id="grid"></canvas>
+    <canvas id="fills"></canvas>
+    <canvas id="paths"></canvas>
+  </div>
+
+  <div id="hint">
+    <div class="pill" id="hintMain"></div>
+    <div class="sub" id="hintSub"></div>
+    <div id="dots"></div>
+  </div>
+
+  <div id="badge">터치 0 / 0 칸</div>
+  <button id="resetBtn" type="button">초기화</button>
+</div>
+
+<button id="menuBtn" type="button" aria-label="검수 항목 메뉴">메뉴</button>
+
+<div id="panel" role="dialog" aria-label="검수 항목 선택">
+  <div class="grip"></div>
+  <p class="ttl">검수 항목</p>
+  <div id="chips"></div>
+  <div class="foot">
+    <button id="prevBtn" type="button">‹ 이전</button>
+    <button id="resetBtn2" type="button" hidden>초기화</button>
+    <button id="closeBtn" type="button">닫기</button>
+    <button id="nextBtn" type="button">다음 ›</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STEPS = [
+    {label:"10% 회색",  color:"#1A1A1A", note:"약한 잔상·번인"},
+    {label:"흰색",      color:"#FFFFFF", note:"잔상·황변·멍"},
+    {label:"파란색",    color:"#0000FF", note:"블루 소자 잔상"},
+    {label:"빨간색",    color:"#FF0000", note:"적색 얼룩"},
+    {label:"초록색",    color:"#00FF00", note:"녹색 얼룩"},
+    {label:"50% 회색",  color:"#808080", note:"중간 밝기 얼룩"},
+    {label:"검정색",    color:"#000000", note:"휘점·빛샘"},
+    {label:"터치 테스트", color:null,     note:"격자 전체 문지르기"}
+  ];
+  var TOUCH_IDX = STEPS.length - 1;
+
+  var stage = document.getElementById("stage");
+  var hint = document.getElementById("hint");
+  var hintMain = document.getElementById("hintMain");
+  var hintSub = document.getElementById("hintSub");
+  var dots = document.getElementById("dots");
+  var themeColor = document.getElementById("themeColor");
+  var menuBtn = document.getElementById("menuBtn");
+  var panel = document.getElementById("panel");
+  var chips = document.getElementById("chips");
+  var closeBtn = document.getElementById("closeBtn");
+  var prevBtn = document.getElementById("prevBtn");
+  var nextBtn = document.getElementById("nextBtn");
+  var resetBtn2 = document.getElementById("resetBtn2");
+  var touchLayer = document.getElementById("touchLayer");
+  var badge = document.getElementById("badge");
+  var resetBtn = document.getElementById("resetBtn");
+
+  var idx = 0;
+  var panelOpen = false;
+  var hintTimer = null;
+
+  /* ---------------- 색 대비 계산 ---------------- */
+  function isLight(hex){
+    var r = parseInt(hex.substr(1,2),16),
+        g = parseInt(hex.substr(3,2),16),
+        b = parseInt(hex.substr(5,2),16);
+    return (0.2126*r + 0.7152*g + 0.0722*b) > 150;
+  }
+
+  function paintUI(){
+    var step = STEPS[idx];
+    var light = (step.color === null) ? false : isLight(step.color);
+    if (light){
+      hint.style.setProperty("--ui-fg", "#111114");
+      hint.style.setProperty("--ui-bg", "rgba(255,255,255,.72)");
+      hint.style.setProperty("--ui-line", "rgba(0,0,0,.16)");
+    } else {
+      hint.style.setProperty("--ui-fg", "#ffffff");
+      hint.style.setProperty("--ui-bg", "rgba(0,0,0,.42)");
+      hint.style.setProperty("--ui-line", "rgba(255,255,255,.42)");
+    }
+  }
+
+  /* ---------------- 안내 문구 ---------------- */
+  function showHint(main, sub, ms){
+    hintMain.textContent = main;
+    hintSub.textContent = sub || "";
+    hintSub.style.display = sub ? "" : "none";
+    hint.style.opacity = "1";
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(function(){ hint.style.opacity = "0"; }, ms || 2000);
+  }
+
+  function buildDots(){
+    var html = "";
+    for (var i=0;i<STEPS.length;i++){
+      html += '<i' + (i===idx ? ' class="on"' : '') + '></i>';
+    }
+    dots.innerHTML = html;
+  }
+
+  /* ---------------- 화면 렌더 ---------------- */
+  function render(animateHint){
+    var step = STEPS[idx];
+    var color = step.color || "#0B0B0B";
+
+    document.documentElement.style.setProperty("--bg", color);
+    document.body.style.background = color;
+    stage.style.background = color;
+    themeColor.setAttribute("content", color);
+    paintUI();
+
+    var isTouch = (idx === TOUCH_IDX);
+    touchLayer.classList.toggle("on", isTouch);
+    badge.classList.toggle("on", isTouch);
+    resetBtn.classList.toggle("on", isTouch);
+    resetBtn2.hidden = !isTouch;
+
+    if (isTouch){
+      hint.style.opacity = "0";
+      layout();
+    } else {
+      buildDots();
+      showHint(
+        step.label + " · " + step.note,
+        (idx === 0 ? "화면을 탭하면 다음 항목" : "탭하면 다음 · 길게 누르면 메뉴"),
+        2000
+      );
+    }
+    syncChips();
+    if (animateHint !== false && !isTouch){ vibrate(8); }
+  }
+
+  function go(n){
+    idx = (n + STEPS.length) % STEPS.length;
+    closePanel();
+    render();
+  }
+  function next(){ go(idx + 1); }
+  function prev(){ go(idx - 1); }
+
+  function vibrate(ms){
+    try{ if (navigator.vibrate) navigator.vibrate(ms); }catch(e){}
+  }
+
+  /* ---------------- 선택 패널 ---------------- */
+  function buildChips(){
+    var frag = document.createDocumentFragment();
+    STEPS.forEach(function(s, i){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.dataset.i = String(i);
+      var sw = document.createElement("span");
+      sw.className = "sw";
+      sw.style.background = s.color || "repeating-linear-gradient(45deg,#888 0 4px,#333 4px 8px)";
+      var tx = document.createElement("span");
+      tx.className = "tx";
+      var nm = document.createElement("span");
+      nm.textContent = s.label;
+      var sm = document.createElement("small");
+      sm.textContent = s.note;
+      tx.appendChild(nm); tx.appendChild(sm);
+      b.appendChild(sw); b.appendChild(tx);
+      b.addEventListener("click", function(){
+        idx = i;
+        closePanel();
+        render();
+      });
+      frag.appendChild(b);
+    });
+    chips.appendChild(frag);
+  }
+  function syncChips(){
+    var list = chips.querySelectorAll(".chip");
+    for (var i=0;i<list.length;i++){
+      list[i].classList.toggle("on", i === idx);
+    }
+  }
+  function openPanel(){
+    panelOpen = true;
+    panel.classList.add("on");
+    syncChips();
+    vibrate(6);
+  }
+  function closePanel(){
+    panelOpen = false;
+    panel.classList.remove("on");
+  }
+  function togglePanel(){
+    if (panelOpen) closePanel(); else openPanel();
+  }
+
+  menuBtn.addEventListener("click", function(e){ e.stopPropagation(); togglePanel(); });
+  closeBtn.addEventListener("click", function(e){ e.stopPropagation(); closePanel(); });
+  prevBtn.addEventListener("click", function(e){ e.stopPropagation(); prev(); });
+  nextBtn.addEventListener("click", function(e){ e.stopPropagation(); next(); });
+  resetBtn2.addEventListener("click", function(e){ e.stopPropagation(); resetTouch(); closePanel(); });
+
+  /* ---------------- 전체화면 ---------------- */
+  var fsTried = false;
+  function tryFullscreen(){
+    if (fsTried) return;
+    fsTried = true;
+    try{
+      var el = document.documentElement;
+      if (el.requestFullscreen && !document.fullscreenElement){
+        var p = el.requestFullscreen({ navigationUI: "hide" });
+        if (p && p.catch) p.catch(function(){});
+      } else if (el.webkitRequestFullscreen && !document.webkitFullscreenElement){
+        el.webkitRequestFullscreen();
+      }
+    }catch(e){}
+  }
+
+  /* ---------------- 탭 / 롱프레스 ---------------- */
+  var down = null, longTimer = null;
+
+  stage.addEventListener("pointerdown", function(e){
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    tryFullscreen();
+    if (idx === TOUCH_IDX) return;
+    down = { id:e.pointerId, x:e.clientX, y:e.clientY, t:Date.now(), long:false };
+    if (longTimer) clearTimeout(longTimer);
+    longTimer = setTimeout(function(){
+      if (down && !down.long){
+        down.long = true;
+        openPanel();
+      }
+    }, 520);
+  }, { passive:true });
+
+  stage.addEventListener("pointerup", function(e){
+    if (longTimer) clearTimeout(longTimer);
+    if (!down || down.id !== e.pointerId) { down = null; return; }
+    var dt = Date.now() - down.t;
+    var dx = Math.abs(e.clientX - down.x);
+    var dy = Math.abs(e.clientY - down.y);
+    var isTap = !down.long && dt < 420 && dx < 14 && dy < 14;
+    down = null;
+    if (idx === TOUCH_IDX) return;
+    if (isTap){
+      if (panelOpen){ closePanel(); return; }
+      next();
+    }
+  }, { passive:true });
+
+  stage.addEventListener("pointercancel", function(){
+    if (longTimer) clearTimeout(longTimer);
+    down = null;
+  }, { passive:true });
+
+  /* 패널 바깥(메뉴 버튼, 패널 제외) 누르면 닫기 */
+  document.addEventListener("pointerdown", function(e){
+    if (!panelOpen) return;
+    if (e.target.closest && e.target.closest("#panel, #menuBtn")) return;
+    closePanel();
+  }, true);
+
+  document.addEventListener("keydown", function(e){
+    if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") { next(); e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { prev(); e.preventDefault(); }
+    else if (e.key === "Escape" || e.key === "m" || e.key === "M") { togglePanel(); }
+  });
+
+  /* ---------------- 터치 테스트 ---------------- */
+  var gridC = document.getElementById("grid");
+  var fillC = document.getElementById("fills");
+  var pathC = document.getElementById("paths");
+  var gctx = gridC.getContext("2d");
+  var fctx = fillC.getContext("2d");
+  var pctx = pathC.getContext("2d");
+
+  var W = 0, H = 0, COLS = 5, ROWS = 8, CW = 0, CH = 0, DPR = 1;
+  var visited = new Uint8Array(0), hitCount = 0, total = 0;
+  var strokes = new Map();   /* pointerId -> {x, y} */
+
+  function layout(){
+    var r = touchLayer.getBoundingClientRect();
+    W = Math.max(1, Math.round(r.width || window.innerWidth));
+    H = Math.max(1, Math.round(r.height || window.innerHeight));
+    DPR = Math.min(window.devicePixelRatio || 1, 3);
+
+    COLS = W < 360 ? 4 : 5;
+    CW = W / COLS;
+    ROWS = Math.max(3, Math.round(H / CW));
+    CH = H / ROWS;
+
+    [gridC, fillC, pathC].forEach(function(c){
+      c.width = Math.round(W * DPR);
+      c.height = Math.round(H * DPR);
+      c.style.width = W + "px";
+      c.style.height = H + "px";
+      c.getContext("2d").setTransform(DPR, 0, 0, DPR, 0, 0);
+    });
+    drawGrid();
+    resetTouch();
+  }
+
+  function drawGrid(){
+    gctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    gctx.clearRect(0, 0, W, H);
+    gctx.fillStyle = "#0B0B0B";
+    gctx.fillRect(0, 0, W, H);
+
+    gctx.strokeStyle = "rgba(255,255,255,.26)";
+    gctx.lineWidth = 1;
+    var i;
+    gctx.beginPath();
+    for (i = 1; i < COLS; i++){
+      var x = Math.round(i * CW) + 0.5;
+      gctx.moveTo(x, 0); gctx.lineTo(x, H);
+    }
+    for (i = 1; i < ROWS; i++){
+      var y = Math.round(i * CH) + 0.5;
+      gctx.moveTo(0, y); gctx.lineTo(W, y);
+    }
+    gctx.stroke();
+
+    /* 맨 바깥 테두리(4면) */
+    gctx.strokeStyle = "rgba(255,255,255,.5)";
+    gctx.lineWidth = 1.5;
+    gctx.strokeRect(0.75, 0.75, W - 1.5, H - 1.5);
+
+    /* 네 모서리 표시 */
+    gctx.strokeStyle = "rgba(140,255,140,.85)";
+    gctx.lineWidth = 3;
+    var L = Math.min(26, CW * 0.4);
+    [[0,0,1,1],[W,0,-1,1],[0,H,1,-1],[W,H,-1,-1]].forEach(function(c){
+      gctx.beginPath();
+      gctx.moveTo(c[0] + c[2]*L, c[1] + c[3]*1.5);
+      gctx.lineTo(c[0] + c[2]*1.5, c[1] + c[3]*1.5);
+      gctx.lineTo(c[0] + c[2]*1.5, c[1] + c[3]*L);
+      gctx.stroke();
+    });
+  }
+
+  function resetTouch(){
+    total = COLS * ROWS;
+    visited = new Uint8Array(total);
+    hitCount = 0;
+    strokes.clear();
+    fctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    fctx.clearRect(0, 0, W, H);
+    pctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    pctx.clearRect(0, 0, W, H);
+    updateBadge();
+  }
+
+  function updateBadge(){
+    if (!total) return;
+    badge.classList.toggle("done", hitCount >= total);
+    if (hitCount >= total){
+      badge.textContent = "전체 " + total + "칸 터치 완료";
+    } else {
+      badge.textContent = "터치 " + hitCount + " / " + total + "칸";
+    }
+  }
+
+  function cellAt(x, y){
+    var cx = Math.floor(x / CW);
+    var cy = Math.floor(y / CH);
+    if (cx < 0) cx = 0; if (cx > COLS - 1) cx = COLS - 1;
+    if (cy < 0) cy = 0; if (cy > ROWS - 1) cy = ROWS - 1;
+    return cy * COLS + cx;
+  }
+
+  function markCell(x, y){
+    var k = cellAt(x, y);
+    if (visited[k]) return;
+    visited[k] = 1;
+    hitCount++;
+    var cx = k % COLS, cy = (k - cx) / COLS;
+    fctx.fillStyle = "rgba(0,255,45,.42)";
+    fctx.fillRect(cx*CW + 1, cy*CH + 1, CW - 2, CH - 2);
+    fctx.strokeStyle = "rgba(0,255,45,.8)";
+    fctx.lineWidth = 1;
+    fctx.strokeRect(cx*CW + 1.5, cy*CH + 1.5, CW - 3, CH - 3);
+    updateBadge();
+  }
+
+  function localPoint(e){
+    var r = touchLayer.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function strokeSeg(x0, y0, x1, y1){
+    pctx.lineCap = "round";
+    pctx.lineJoin = "round";
+    pctx.strokeStyle = "rgba(0,0,0,.45)";
+    pctx.lineWidth = 10;
+    pctx.beginPath(); pctx.moveTo(x0, y0); pctx.lineTo(x1, y1); pctx.stroke();
+    pctx.strokeStyle = "#F4FFF4";
+    pctx.lineWidth = 5;
+    pctx.beginPath(); pctx.moveTo(x0, y0); pctx.lineTo(x1, y1); pctx.stroke();
+  }
+
+  function strokeDot(x, y){
+    pctx.fillStyle = "#F4FFF4";
+    pctx.beginPath(); pctx.arc(x, y, 3.2, 0, Math.PI*2); pctx.fill();
+  }
+
+  pathC.addEventListener("pointerdown", function(e){
+    e.preventDefault();
+    try{ pathC.setPointerCapture(e.pointerId); }catch(err){}
+    var p = localPoint(e);
+    strokes.set(e.pointerId, p);
+    markCell(p.x, p.y);
+    strokeDot(p.x, p.y);
+  }, { passive:false });
+
+  pathC.addEventListener("pointermove", function(e){
+    if (!strokes.has(e.pointerId)) return;
+    e.preventDefault();
+    var prevP = strokes.get(e.pointerId);
+    var p = localPoint(e);
+    if (Math.abs(p.x - prevP.x) < 0.6 && Math.abs(p.y - prevP.y) < 0.6) return;
+    strokeSeg(prevP.x, prevP.y, p.x, p.y);
+    markCell(p.x, p.y);
+    strokes.set(e.pointerId, p);
+  }, { passive:false });
+
+  function endStroke(e){
+    strokes.delete(e.pointerId);
+    try{ pathC.releasePointerCapture(e.pointerId); }catch(err){}
+  }
+  pathC.addEventListener("pointerup", endStroke);
+  pathC.addEventListener("pointercancel", endStroke);
+
+  resetBtn.addEventListener("click", function(e){ e.stopPropagation(); resetTouch(); });
+
+  /* ---------------- 크기 변화 ---------------- */
+  var rTimer = null;
+  function onResize(){
+    if (rTimer) clearTimeout(rTimer);
+    rTimer = setTimeout(function(){
+      if (idx === TOUCH_IDX) layout();
+    }, 140);
+  }
+  window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", onResize);
+  document.addEventListener("visibilitychange", function(){
+    if (!document.hidden && idx === TOUCH_IDX) layout();
+  });
+
+  /* ---------------- 시작 ---------------- */
+  buildChips();
+  render();
+})();
+</script>
+</body>
+</html>
