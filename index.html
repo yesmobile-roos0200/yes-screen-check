@@ -103,44 +103,53 @@
     position:absolute; left:0; top:0; display:block;
     touch-action:none;
   }
-  #badge{
+  /* 터치 모드 하단 컨트롤: 화면 네 모서리를 비워 두려고 가운데에 모음 */
+  #touchBar{
     position:absolute;
     left:50%; transform:translateX(-50%);
-    bottom:calc(env(safe-area-inset-bottom, 0px) + 14px);
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);
     z-index:6;
+    display:none;
+    align-items:center; gap:7px;
+    pointer-events:none;
+    max-width:94vw;
+  }
+  #touchBar.on{display:flex;}
+  #badge{
     background:rgba(0,0,0,.55);
     color:#eaffea;
     border:1px solid rgba(255,255,255,.28);
     border-radius:999px;
-    padding:8px 15px;
+    padding:8px 14px;
     font-size:13px; font-weight:600;
     letter-spacing:-.1px;
-    display:none;
-    pointer-events:none;
     white-space:nowrap;
   }
-  #badge.on{display:block;}
   #badge.done{
     background:rgba(0,255,60,.92);
     color:#04140a;
     border-color:rgba(255,255,255,.6);
   }
   #resetBtn{
-    position:absolute;
-    right:calc(env(safe-area-inset-right, 0px) + 12px);
-    bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);
-    z-index:6;
-    display:none;
     appearance:none;
+    pointer-events:auto;
     font:600 13px/1 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
     color:#fff;
     background:rgba(255,255,255,.14);
     border:1px solid rgba(255,255,255,.42);
     border-radius:999px;
     padding:11px 16px;
+    white-space:nowrap;
   }
-  #resetBtn.on{display:block;}
   #resetBtn:active{background:rgba(255,255,255,.3);}
+
+  /* 터치 모드에서는 메뉴 버튼을 상단 가운데로 옮겨 네 모서리를 비움 */
+  body.touch-mode #menuBtn{
+    right:auto;
+    left:50%;
+    transform:translateX(-50%);
+    opacity:.55;
+  }
 
   /* ---------- 선택 패널 ---------- */
   #panel{
@@ -231,8 +240,10 @@
     <div id="dots"></div>
   </div>
 
-  <div id="badge">터치 0 / 0 칸</div>
-  <button id="resetBtn" type="button">초기화</button>
+  <div id="touchBar">
+    <div id="badge">터치 0 / 0 칸</div>
+    <button id="resetBtn" type="button">초기화</button>
+  </div>
 </div>
 
 <button id="menuBtn" type="button" aria-label="검수 항목 메뉴">메뉴</button>
@@ -281,6 +292,7 @@
   var touchLayer = document.getElementById("touchLayer");
   var badge = document.getElementById("badge");
   var resetBtn = document.getElementById("resetBtn");
+  var touchBar = document.getElementById("touchBar");
 
   var idx = 0;
   var panelOpen = false;
@@ -339,8 +351,8 @@
 
     var isTouch = (idx === TOUCH_IDX);
     touchLayer.classList.toggle("on", isTouch);
-    badge.classList.toggle("on", isTouch);
-    resetBtn.classList.toggle("on", isTouch);
+    touchBar.classList.toggle("on", isTouch);
+    document.body.classList.toggle("touch-mode", isTouch);
     resetBtn2.hidden = !isTouch;
 
     if (isTouch){
