@@ -35,6 +35,10 @@
 이 페이지는 `<meta name="color-scheme" content="light only">` 와 CSS `color-scheme: light only` 로
 브라우저의 자동 다크 반전을 막습니다(안드로이드 크롬, 최신 삼성 인터넷은 이 신호를 따릅니다).
 
+그래서 검수 색은 CSS 배경색이 아니라 `#colorCanvas` 캔버스에 직접 칠합니다(첫 화면 `#FFFFFF`).
+화면 크기·회전·전체화면 전환 때마다 뷰포트 크기(`window.innerWidth/Height`, `devicePixelRatio`)에 맞춰 다시 채웁니다.
+터치 테스트 모드에서는 캔버스를 숨기고 `#touchLayer` 격자가 그 위를 덮습니다.
+
 그래도 삼성 인터넷에서 **순백색이 회색으로 보이면** 브라우저의 강제 다크가 켜진 것입니다.
 이 기능은 페이지가 끌 수 없는 경우가 있어, 메뉴(항목 선택 바)에 설정 경로를 함께 표시합니다.
 
