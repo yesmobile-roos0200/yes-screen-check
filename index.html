@@ -610,12 +610,13 @@
   });
 
   /* ---------------- 탭 / 롱프레스 ---------------- */
-  var down = null, longTimer = null, tapInfo = null;
+  var down = null, longTimer = null, tapInfo = null, panelDismissAt = 0;
 
   stage.addEventListener("pointerdown", function(e){
     if (e.pointerType === "mouse" && e.button !== 0) return;
     if (idx === TOUCH_IDX) return;
-    down = { id:e.pointerId, x:e.clientX, y:e.clientY, t:Date.now(), long:false, panel:panelOpen };
+    var closing = panelOpen || (panelDismissAt && Date.now() - panelDismissAt < 500);
+    down = { id:e.pointerId, x:e.clientX, y:e.clientY, t:Date.now(), long:false, panel:closing };
     if (longTimer) clearTimeout(longTimer);
     longTimer = setTimeout(function(){
       if (down && !down.long){
@@ -674,6 +675,7 @@
   document.addEventListener("pointerdown", function(e){
     if (!panelOpen) return;
     if (e.target.closest && e.target.closest("#panel, #menuBtn")) return;
+    panelDismissAt = Date.now();   /* 닫기용 탭은 다음 화면으로 넘기지 않는다 */
     closePanel();
   }, true);
 
