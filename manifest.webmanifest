@@ -1,0 +1,14 @@
+{
+  "name": "예스통신 액정 검수",
+  "short_name": "액정 검수",
+  "description": "중고폰 액정 잔상·황변·터치 검수용 단색 화면",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF"
+}

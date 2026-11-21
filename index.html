@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" id="themeColor" content="#1A1A1A">
+<meta name="theme-color" id="themeColor" content="#FFFFFF">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,7 +12,7 @@
 <title>예스통신 액정 검수</title>
 <style>
   :root{
-    --bg:#1A1A1A;
+    --bg:#FFFFFF;
     --ui-fg:#ffffff;
     --ui-bg:rgba(0,0,0,.42);
     --ui-line:rgba(255,255,255,.42);
@@ -88,8 +89,11 @@
     padding:9px 13px;
     backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
     opacity:.92;
+    transition:opacity .4s ease;
   }
   #menuBtn:active{opacity:.6;}
+  /* 단색 검수 중 힌트가 사라지면 메뉴 버튼을 더 옅게 (잔상·가장자리 확인 방해 최소화) */
+  body:not(.hint-visible):not(.panel-open):not(.touch-mode) #menuBtn{opacity:.22;}
 
   /* ---------- 터치 테스트 ---------- */
   #touchLayer{
@@ -206,6 +210,20 @@
     border-color:rgba(255,255,255,.93);
   }
   .chip.on .tx small{color:rgba(0,0,0,.45);}
+  #panelTools{
+    display:flex; justify-content:flex-end; margin-top:10px;
+  }
+  #fsBtn{
+    appearance:none;
+    font:600 12.5px/1 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    letter-spacing:-.1px;
+    color:rgba(255,255,255,.92);
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.24);
+    border-radius:999px;
+    padding:9px 14px;
+  }
+  #fsBtn:active{background:rgba(255,255,255,.22);}
   #panel .foot{
     display:flex; gap:8px; margin-top:10px;
   }
@@ -223,6 +241,8 @@
     .chip{padding:8px 10px; font-size:13px;}
     .chip .tx small{display:none;}
     #panel .foot button{padding:10px 6px;}
+    #panelTools{margin-top:8px;}
+    #fsBtn{padding:7px 12px;}
   }
 </style>
 </head>
@@ -252,6 +272,9 @@
   <div class="grip"></div>
   <p class="ttl">검수 항목</p>
   <div id="chips"></div>
+  <div id="panelTools">
+    <button id="fsBtn" type="button">전체화면</button>
+  </div>
   <div class="foot">
     <button id="prevBtn" type="button">‹ 이전</button>
     <button id="resetBtn2" type="button" hidden>초기화</button>
@@ -265,8 +288,8 @@
   "use strict";
 
   var STEPS = [
+    {label:"순백색 흰색", color:"#FFFFFF", note:"가장 밝은 화면 · 잔상·황변"},
     {label:"10% 회색",  color:"#1A1A1A", note:"약한 잔상·번인"},
-    {label:"흰색",      color:"#FFFFFF", note:"잔상·황변·멍"},
     {label:"파란색",    color:"#0000FF", note:"블루 소자 잔상"},
     {label:"빨간색",    color:"#FF0000", note:"적색 얼룩"},
     {label:"초록색",    color:"#00FF00", note:"녹색 얼룩"},
@@ -293,6 +316,7 @@
   var badge = document.getElementById("badge");
   var resetBtn = document.getElementById("resetBtn");
   var touchBar = document.getElementById("touchBar");
+  var fsBtn = document.getElementById("fsBtn");
 
   var idx = 0;
   var panelOpen = false;
@@ -321,13 +345,18 @@
   }
 
   /* ---------------- 안내 문구 ---------------- */
+  function setHintVisible(v){
+    hint.style.opacity = v ? "1" : "0";
+    document.body.classList.toggle("hint-visible", !!v);
+  }
+
   function showHint(main, sub, ms){
     hintMain.textContent = main;
     hintSub.textContent = sub || "";
     hintSub.style.display = sub ? "" : "none";
-    hint.style.opacity = "1";
+    setHintVisible(true);
     if (hintTimer) clearTimeout(hintTimer);
-    hintTimer = setTimeout(function(){ hint.style.opacity = "0"; }, ms || 2000);
+    hintTimer = setTimeout(function(){ setHintVisible(false); }, ms || 2000);
   }
 
   function buildDots(){
@@ -356,14 +385,15 @@
     resetBtn2.hidden = !isTouch;
 
     if (isTouch){
-      hint.style.opacity = "0";
+      if (hintTimer) clearTimeout(hintTimer);
+      setHintVisible(false);
       layout();
     } else {
       buildDots();
       showHint(
         step.label + " · " + step.note,
-        (idx === 0 ? "화면을 탭하면 다음 항목" : "탭하면 다음 · 길게 누르면 메뉴"),
-        2000
+        (idx === 0 ? "화면 밝기 최대 · 탭하면 다음 · 길게 누르면 메뉴" : "탭하면 다음 · 길게 누르면 메뉴"),
+        2200
       );
     }
     syncChips();
@@ -419,12 +449,15 @@
   function openPanel(){
     panelOpen = true;
     panel.classList.add("on");
+    document.body.classList.add("panel-open");
     syncChips();
+    syncFsBtn();
     vibrate(6);
   }
   function closePanel(){
     panelOpen = false;
     panel.classList.remove("on");
+    document.body.classList.remove("panel-open");
   }
   function togglePanel(){
     if (panelOpen) closePanel(); else openPanel();
@@ -437,27 +470,77 @@
   resetBtn2.addEventListener("click", function(e){ e.stopPropagation(); resetTouch(); closePanel(); });
 
   /* ---------------- 전체화면 ---------------- */
-  var fsTried = false;
-  function tryFullscreen(){
-    if (fsTried) return;
-    fsTried = true;
+  /* 한 번 실패해도 매 터치마다 다시 시도한다. 전체화면을 나갔다가 화면을 다시 만지면 재진입. */
+  var fsPendingAt = 0;
+
+  function fsElement(){
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function enterFullscreen(){
+    if (fsElement()) return;
+    if (fsPendingAt && Date.now() - fsPendingAt < 1200) return;
+    fsPendingAt = Date.now();
     try{
       var el = document.documentElement;
-      if (el.requestFullscreen && !document.fullscreenElement){
+      if (el.requestFullscreen){
         var p = el.requestFullscreen({ navigationUI: "hide" });
         if (p && p.catch) p.catch(function(){});
-      } else if (el.webkitRequestFullscreen && !document.webkitFullscreenElement){
+      } else if (el.webkitRequestFullscreen){
         el.webkitRequestFullscreen();
       }
     }catch(e){}
+    setTimeout(function(){ fsPendingAt = 0; }, 1200);
   }
+
+  function exitFullscreen(){
+    try{
+      if (document.exitFullscreen){
+        var p = document.exitFullscreen();
+        if (p && p.catch) p.catch(function(){});
+      } else if (document.webkitExitFullscreen){
+        document.webkitExitFullscreen();
+      }
+    }catch(e){}
+  }
+
+  function syncFsBtn(){
+    if (!fsBtn) return;
+    fsBtn.textContent = fsElement() ? "전체화면 해제" : "전체화면";
+  }
+
+  function toggleFullscreen(){
+    if (fsElement()) exitFullscreen(); else enterFullscreen();
+  }
+
+  /* 자동 전체화면: 터치 테스트 중이거나 패널을 만지는 중에는 방해하지 않는다 */
+  function autoFullscreen(){
+    if (idx === TOUCH_IDX) return;
+    if (panelOpen) return;
+    if (fsElement()) return;
+    enterFullscreen();
+  }
+
+  function onFsChange(){
+    fsPendingAt = 0;
+    syncFsBtn();
+    if (idx === TOUCH_IDX) layout();
+  }
+  ["fullscreenchange", "webkitfullscreenchange"].forEach(function(ev){
+    document.addEventListener(ev, onFsChange);
+  });
+
+  fsBtn.addEventListener("click", function(e){
+    e.stopPropagation();
+    toggleFullscreen();
+    syncFsBtn();
+  });
 
   /* ---------------- 탭 / 롱프레스 ---------------- */
   var down = null, longTimer = null;
 
   stage.addEventListener("pointerdown", function(e){
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    tryFullscreen();
     if (idx === TOUCH_IDX) return;
     down = { id:e.pointerId, x:e.clientX, y:e.clientY, t:Date.now(), long:false };
     if (longTimer) clearTimeout(longTimer);
@@ -471,6 +554,7 @@
 
   stage.addEventListener("pointerup", function(e){
     if (longTimer) clearTimeout(longTimer);
+    autoFullscreen();
     if (!down || down.id !== e.pointerId) { down = null; return; }
     var dt = Date.now() - down.t;
     var dx = Math.abs(e.clientX - down.x);
@@ -684,6 +768,7 @@
 
   /* ---------------- 시작 ---------------- */
   buildChips();
+  syncFsBtn();
   render();
 })();
 </script>
