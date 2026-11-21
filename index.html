@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- 브라우저 자동 다크 반전 차단(삼성 인터넷·안드로이드 크롬 Force Dark). 검수 화면은 색이 그대로여야 한다. -->
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light">
 <meta name="theme-color" id="themeColor" content="#FFFFFF">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,6 +15,7 @@
 <title>예스통신 액정 검수</title>
 <style>
   :root{
+    color-scheme: light only;
     --bg:#FFFFFF;
     --ui-fg:#ffffff;
     --ui-bg:rgba(0,0,0,.42);
@@ -21,7 +25,9 @@
   html,body{
     margin:0; padding:0;
     height:100%;
+    color-scheme: light only;
     background:var(--bg);
+    background-color:var(--bg);
     overflow:hidden;
     overscroll-behavior:none;
     -webkit-user-select:none; user-select:none;
@@ -32,7 +38,9 @@
   #stage{
     position:fixed; left:0; top:0;
     width:100%; height:100vh; height:100dvh;
+    color-scheme: light only;
     background:var(--bg);
+    background-color:var(--bg);
     touch-action:none;
     overflow:hidden;
   }
@@ -237,6 +245,14 @@
   }
   #panel .foot button:active{background:rgba(255,255,255,.22);}
   #closeBtn{flex:0 0 74px !important;}
+  #panel .tip{
+    margin:9px 2px 0;
+    font-size:11px; font-weight:500; line-height:1.55;
+    color:rgba(255,255,255,.52);
+    letter-spacing:-.1px;
+    word-break:keep-all;
+  }
+  #panel .tip b{color:rgba(255,255,255,.8); font-weight:600;}
   @media (max-height:560px){
     .chip{padding:8px 10px; font-size:13px;}
     .chip .tx small{display:none;}
@@ -275,6 +291,7 @@
   <div id="panelTools">
     <button id="fsBtn" type="button">전체화면</button>
   </div>
+  <p class="tip" id="browserTip" hidden></p>
   <div class="foot">
     <button id="prevBtn" type="button">‹ 이전</button>
     <button id="resetBtn2" type="button" hidden>초기화</button>
@@ -359,6 +376,32 @@
     hintTimer = setTimeout(function(){ setHintVisible(false); }, ms || 2000);
   }
 
+  /* 첫 화면에서 "전체화면 대기 중"인지 (첫 탭은 색을 넘기지 않고 전체화면만 시도한다) */
+  function waitingFirstTap(){
+    return (idx === 0) && !fsFirstTapDone && !fsBlocked && !fsElement() && !standaloneDisplay();
+  }
+
+  function hintLine(){
+    if (waitingFirstTap()){
+      return {
+        main: "화면을 탭하면 전체화면으로 시작합니다",
+        sub: "화면 밝기 최대 · 길게 누르면 메뉴",
+        ms: 5000
+      };
+    }
+    return {
+      main: STEPS[idx].label + " · " + STEPS[idx].note,
+      sub: (idx === 0 ? "화면 밝기 최대 · 탭하면 다음 · 길게 누르면 메뉴" : "탭하면 다음 · 길게 누르면 메뉴"),
+      ms: 2200
+    };
+  }
+
+  function refreshHint(){
+    if (idx === TOUCH_IDX || panelOpen) return;
+    var h = hintLine();
+    showHint(h.main, h.sub, h.ms);
+  }
+
   function buildDots(){
     var html = "";
     for (var i=0;i<STEPS.length;i++){
@@ -390,11 +433,8 @@
       layout();
     } else {
       buildDots();
-      showHint(
-        step.label + " · " + step.note,
-        (idx === 0 ? "화면 밝기 최대 · 탭하면 다음 · 길게 누르면 메뉴" : "탭하면 다음 · 길게 누르면 메뉴"),
-        2200
-      );
+      var h = hintLine();
+      showHint(h.main, h.sub, h.ms);
     }
     syncChips();
     if (animateHint !== false && !isTouch){ vibrate(8); }
@@ -470,27 +510,59 @@
   resetBtn2.addEventListener("click", function(e){ e.stopPropagation(); resetTouch(); closePanel(); });
 
   /* ---------------- 전체화면 ---------------- */
-  /* 한 번 실패해도 매 터치마다 다시 시도한다. 전체화면을 나갔다가 화면을 다시 만지면 재진입. */
-  var fsPendingAt = 0;
+  /* 브라우저는 페이지 로드 직후의 자동 requestFullscreen()을 막는다.
+     그래서 첫 탭은 "색을 넘기지 않고" 지금 색 그대로 전체화면으로 들어가는 데만 쓴다.
+     requestFullscreen이 없는 브라우저(아이폰 사파리 등)나 거절된 경우에는 바로 다음 색으로 넘어간다. */
+  var fsTrying = false;       /* 요청 진행 중 */
+  var fsBlocked = false;      /* API 없음/거절 → 다음 탭부터는 바로 진행 */
+  var fsFirstTapDone = false; /* 첫 탭에서 전체화면을 시도했는지 */
 
   function fsElement(){
     return document.fullscreenElement || document.webkitFullscreenElement || null;
   }
 
-  function enterFullscreen(){
-    if (fsElement()) return;
-    if (fsPendingAt && Date.now() - fsPendingAt < 1200) return;
-    fsPendingAt = Date.now();
+  function standaloneDisplay(){
     try{
-      var el = document.documentElement;
-      if (el.requestFullscreen){
-        var p = el.requestFullscreen({ navigationUI: "hide" });
-        if (p && p.catch) p.catch(function(){});
-      } else if (el.webkitRequestFullscreen){
-        el.webkitRequestFullscreen();
-      }
-    }catch(e){}
-    setTimeout(function(){ fsPendingAt = 0; }, 1200);
+      if (window.navigator.standalone === true) return true;
+      return !!(window.matchMedia && window.matchMedia(
+        "(display-mode: fullscreen), (display-mode: standalone), (display-mode: minimal-ui)"
+      ).matches);
+    }catch(e){ return false; }
+  }
+
+  function fsAvailable(){
+    var el = document.documentElement;
+    return !!(el.requestFullscreen || el.webkitRequestFullscreen);
+  }
+
+  /* 현재 색을 그대로 둔 채 전체화면 진입. Promise<true|false|null> (true=진입, false=불가/거절, null=판단 보류) */
+  function enterFullscreen(){
+    if (fsElement()) return Promise.resolve(true);
+    if (fsTrying) return Promise.resolve(null);
+    if (!fsAvailable()){ fsBlocked = true; return Promise.resolve(false); }
+
+    fsTrying = true;
+    var el = document.documentElement, p;
+    try{
+      if (el.requestFullscreen) p = el.requestFullscreen({ navigationUI: "hide" });
+      else p = el.webkitRequestFullscreen();
+    }catch(err){
+      fsTrying = false; fsBlocked = true;
+      return Promise.resolve(false);
+    }
+    if (!p || typeof p.then !== "function"){
+      /* 구형 webkit은 Promise를 주지 않는다 → 이벤트로 확인 */
+      setTimeout(function(){ fsTrying = false; }, 800);
+      return Promise.resolve(true);
+    }
+    return p.then(function(){
+      fsTrying = false;
+      return true;
+    })["catch"](function(){
+      fsTrying = false;
+      fsBlocked = true;   /* 거절되면 다음 탭부터는 그냥 다음 색으로 */
+      return false;
+    });
   }
 
   function exitFullscreen(){
@@ -510,21 +582,21 @@
   }
 
   function toggleFullscreen(){
-    if (fsElement()) exitFullscreen(); else enterFullscreen();
-  }
-
-  /* 자동 전체화면: 터치 테스트 중이거나 패널을 만지는 중에는 방해하지 않는다 */
-  function autoFullscreen(){
-    if (idx === TOUCH_IDX) return;
-    if (panelOpen) return;
-    if (fsElement()) return;
-    enterFullscreen();
+    if (fsElement()){
+      exitFullscreen();
+    } else {
+      fsBlocked = false;
+      fsFirstTapDone = true;
+      enterFullscreen().then(function(){ syncFsBtn(); refreshHint(); });
+    }
   }
 
   function onFsChange(){
-    fsPendingAt = 0;
+    fsTrying = false;
+    if (fsElement()) fsBlocked = false;
     syncFsBtn();
     if (idx === TOUCH_IDX) layout();
+    refreshHint();
   }
   ["fullscreenchange", "webkitfullscreenchange"].forEach(function(ev){
     document.addEventListener(ev, onFsChange);
@@ -534,19 +606,21 @@
     e.stopPropagation();
     toggleFullscreen();
     syncFsBtn();
+    vibrate(6);
   });
 
   /* ---------------- 탭 / 롱프레스 ---------------- */
-  var down = null, longTimer = null;
+  var down = null, longTimer = null, tapInfo = null;
 
   stage.addEventListener("pointerdown", function(e){
     if (e.pointerType === "mouse" && e.button !== 0) return;
     if (idx === TOUCH_IDX) return;
-    down = { id:e.pointerId, x:e.clientX, y:e.clientY, t:Date.now(), long:false };
+    down = { id:e.pointerId, x:e.clientX, y:e.clientY, t:Date.now(), long:false, panel:panelOpen };
     if (longTimer) clearTimeout(longTimer);
     longTimer = setTimeout(function(){
       if (down && !down.long){
         down.long = true;
+        tapInfo = null;
         openPanel();
       }
     }, 520);
@@ -554,24 +628,47 @@
 
   stage.addEventListener("pointerup", function(e){
     if (longTimer) clearTimeout(longTimer);
-    autoFullscreen();
-    if (!down || down.id !== e.pointerId) { down = null; return; }
-    var dt = Date.now() - down.t;
-    var dx = Math.abs(e.clientX - down.x);
-    var dy = Math.abs(e.clientY - down.y);
-    var isTap = !down.long && dt < 420 && dx < 14 && dy < 14;
-    down = null;
-    if (idx === TOUCH_IDX) return;
-    if (isTap){
-      if (panelOpen){ closePanel(); return; }
-      next();
+    var info = null;
+    if (down && down.id === e.pointerId){
+      var dt = Date.now() - down.t;
+      var dx = Math.abs(e.clientX - down.x);
+      var dy = Math.abs(e.clientY - down.y);
+      if (!down.long && dt < 420 && dx < 14 && dy < 14) info = { panel: down.panel };
     }
+    down = null;
+    tapInfo = info;
+    if (info) setTimeout(function(){ tapInfo = null; }, 700);
   }, { passive:true });
 
   stage.addEventListener("pointercancel", function(){
     if (longTimer) clearTimeout(longTimer);
     down = null;
+    tapInfo = null;
   }, { passive:true });
+
+  /* 실제 동작은 click에서 — requestFullscreen()이 사용자 제스처로 인정받는 가장 확실한 지점 */
+  stage.addEventListener("click", function(){
+    var info = tapInfo;
+    tapInfo = null;
+    if (!info) return;                 /* 롱프레스·드래그였으면 무시 */
+    if (idx === TOUCH_IDX) return;
+    if (info.panel || panelOpen){ closePanel(); return; }
+    handleTap();
+  });
+
+  function handleTap(){
+    /* 첫 탭: 순백색 그대로 전체화면만. 그 다음 탭부터 다음 색으로. */
+    if (waitingFirstTap()){
+      fsFirstTapDone = true;
+      vibrate(8);
+      enterFullscreen().then(function(ok){
+        if (ok === false) next();        /* 전체화면을 못 쓰는 브라우저·거절 → 정상 진행 */
+        else if (ok === true) refreshHint();
+      });
+      return;
+    }
+    next();
+  }
 
   /* 패널 바깥(메뉴 버튼, 패널 제외) 누르면 닫기 */
   document.addEventListener("pointerdown", function(e){
@@ -765,6 +862,17 @@
   document.addEventListener("visibilitychange", function(){
     if (!document.hidden && idx === TOUCH_IDX) layout();
   });
+
+  /* ---------------- 브라우저별 안내 ---------------- */
+  /* 삼성 인터넷은 '웹 콘텐츠에 어두운 화면 모드 강제 적용'이 켜져 있으면 페이지 색을 반전시킨다.
+     color-scheme: light only로 막을 수 있는 버전도 있지만 아닌 버전이 있어 설정 경로를 함께 보여 준다. */
+  var browserTip = document.getElementById("browserTip");
+  if (browserTip && /SamsungBrowser/i.test(navigator.userAgent)){
+    browserTip.innerHTML =
+      "<b>삼성 인터넷에서 흰색이 어둡게 보이면</b><br>" +
+      "설정 → 웹페이지 보기 및 스크롤 방식 → 어두운 화면 모드 → ‘웹 콘텐츠에 어두운 화면 모드 강제 적용’ 끄기 (또는 크롬으로 열기)";
+    browserTip.hidden = false;
+  }
 
   /* ---------------- 시작 ---------------- */
   buildChips();
