@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="중고폰 액정 잔상·터치 검수용 단색 화면">
+<meta name="description" content="중고폰 매입 검수용 단색·터치·사운드·진동·마이크 화면">
 <title>예스통신 액정 검수</title>
 <style>
   :root{
@@ -111,7 +111,9 @@
   }
   #menuBtn:active{opacity:.6;}
   /* 단색 검수 중 힌트가 사라지면 메뉴 버튼을 더 옅게 (잔상·가장자리 확인 방해 최소화) */
-  body:not(.hint-visible):not(.panel-open):not(.touch-mode) #menuBtn{opacity:.22;}
+  body:not(.hint-visible):not(.panel-open):not(.touch-mode):not(.hw-mode) #menuBtn{opacity:.22;}
+  /* 사운드·진동·마이크 화면은 어두운 카드가 화면을 덮으므로 메뉴 버튼을 또렷하게 */
+  body.hw-mode #menuBtn{opacity:.86; background:rgba(0,0,0,.5);}
 
   /* ---------- 터치 테스트 ---------- */
   #touchLayer{
@@ -270,6 +272,93 @@
     #panelTools{margin-top:8px;}
     #fsBtn{padding:7px 12px;}
   }
+  /* 9개 항목: 마지막(사운드·진동·마이크) 칩은 한 줄 전체로 */
+  #chips .chip:last-child:nth-child(odd){grid-column:1 / -1;}
+
+  /* ---------- 사운드 · 진동 · 마이크 ---------- */
+  #hwLayer{
+    position:absolute; inset:0;
+    display:none;
+    z-index:4;
+    background:radial-gradient(120% 80% at 50% 0%, #171A1F 0%, #0B0B0B 64%);
+    color:#fff;
+    padding:calc(env(safe-area-inset-top, 0px) + 54px) 14px calc(env(safe-area-inset-bottom, 0px) + 16px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  #hwLayer.on{display:flex; flex-direction:column;}
+  .hwCard{
+    width:100%; max-width:430px; margin:auto;
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .hwHead{display:flex; align-items:flex-end; justify-content:space-between; gap:10px; padding:0 3px 1px;}
+  .hwHead h1{margin:0; font-size:18px; font-weight:700; letter-spacing:-.5px;}
+  .hwHead span{font-size:10.5px; font-weight:500; color:rgba(255,255,255,.42); letter-spacing:-.1px; white-space:nowrap;}
+  .hwSec{
+    background:rgba(255,255,255,.055);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:16px;
+    padding:11px 12px 12px;
+  }
+  .hwSec .hd{display:flex; align-items:center; gap:7px; margin-bottom:9px;}
+  .hwSec .hd b{font-size:13px; font-weight:700; letter-spacing:-.2px;}
+  .hwSec .hd em{
+    font-style:normal; margin-left:auto;
+    font-size:10.5px; font-weight:500; letter-spacing:-.1px;
+    color:rgba(255,255,255,.42); white-space:nowrap;
+  }
+  .hwRow{display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px;}
+  .hwBtn{
+    appearance:none; -webkit-appearance:none;
+    font-family:inherit; color:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    min-height:52px; padding:9px 6px;
+    background:rgba(255,255,255,.085);
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:13px;
+    font-size:13.5px; font-weight:700; letter-spacing:-.3px; line-height:1.2;
+    transition:background .12s ease, color .12s ease, border-color .12s ease;
+  }
+  .hwBtn small{font-size:10px; font-weight:500; color:rgba(255,255,255,.46); letter-spacing:-.1px; line-height:1.2;}
+  .hwBtn:active{transform:scale(.985);}
+  .hwBtn.on{background:#35E07C; color:#062312; border-color:#35E07C;}
+  .hwBtn.on small{color:rgba(0,0,0,.5);}
+  .hwBtn.wide{width:100%; min-height:50px;}
+  #micMeter{
+    position:relative; height:9px; margin-top:10px;
+    background:rgba(255,255,255,.10); border-radius:999px; overflow:hidden;
+  }
+  #meterFill{
+    display:block; height:100%; width:0%; border-radius:999px;
+    background:linear-gradient(90deg,#35E07C 0%,#35E07C 62%,#FFD34E 84%,#FF5C5C 100%);
+    transition:width .08s linear;
+  }
+  .hwSt{
+    margin:8px 2px 0;
+    font-size:11.5px; font-weight:500; line-height:1.45; letter-spacing:-.1px;
+    color:rgba(255,255,255,.52); word-break:keep-all;
+    min-height:17px;
+  }
+  .hwSt.warn{color:#FFB1A4;}
+  .hwMeta{display:flex; align-items:flex-start; justify-content:space-between; gap:8px;}
+  #micDb{
+    flex:none; margin-top:8px;
+    font-size:11px; font-weight:600; letter-spacing:-.1px;
+    color:rgba(255,255,255,.42); font-variant-numeric:tabular-nums;
+  }
+  @media (max-height:700px){
+    .hwCard{gap:10px;}
+    .hwSec{padding:9px 11px 10px;}
+    .hwBtn{min-height:46px; font-size:12.5px;}
+    .hwHead h1{font-size:16.5px;}
+    .hwSt{font-size:11px; min-height:15px; margin-top:6px;}
+  }
+  @media (max-height:580px){
+    #hwLayer{padding-top:calc(env(safe-area-inset-top, 0px) + 46px);}
+    .hwHead{display:none;}
+    .hwBtn small{display:none;}
+  }
 </style>
 </head>
 <body>
@@ -280,6 +369,41 @@
     <canvas id="grid"></canvas>
     <canvas id="fills"></canvas>
     <canvas id="paths"></canvas>
+  </div>
+
+  <div id="hwLayer">
+    <div class="hwCard">
+      <div class="hwHead">
+        <h1>사운드 · 진동 · 마이크</h1>
+        <span>매입 검수 9단계</span>
+      </div>
+
+      <section class="hwSec">
+        <div class="hd"><b>스피커</b><em>상단 = L / 하단 = R</em></div>
+        <div class="hwRow">
+          <button class="hwBtn" type="button" data-pan="-1"><span>상단(좌)</span><small>L 채널</small></button>
+          <button class="hwBtn" type="button" data-pan="1"><span>하단(우)</span><small>R 채널</small></button>
+          <button class="hwBtn" type="button" data-pan="0"><span>양쪽</span><small>스테레오</small></button>
+        </div>
+        <p class="hwSt" id="spkStatus">버튼을 누르면 3음이 약 1.2초 재생됩니다</p>
+      </section>
+
+      <section class="hwSec">
+        <div class="hd"><b>진동</b><em>갤럭시 전용</em></div>
+        <button class="hwBtn wide" id="vibBtn" type="button"><span>진동 울리기 (갤럭시)</span><small>220 · 100 · 220 · 100 · 300ms</small></button>
+        <p class="hwSt" id="vibStatus">갤럭시: 세 번 울립니다</p>
+      </section>
+
+      <section class="hwSec">
+        <div class="hd"><b>마이크</b><em>3초 녹음 → 자동 재생</em></div>
+        <button class="hwBtn wide" id="micBtn" type="button"><span id="micBtnLabel">마이크 3초 녹음·재생</span><small id="micBtnSub">눌러서 권한 허용</small></button>
+        <div id="micMeter"><span id="meterFill"></span></div>
+        <div class="hwMeta">
+          <p class="hwSt" id="micStatus">레벨 바가 움직이면 마이크 정상</p>
+          <span id="micDb">—</span>
+        </div>
+      </section>
+    </div>
   </div>
 
   <div id="hint">
@@ -324,9 +448,11 @@
     {label:"초록색",    color:"#00FF00", note:"녹색 얼룩"},
     {label:"50% 회색",  color:"#808080", note:"중간 밝기 얼룩"},
     {label:"검정색",    color:"#000000", note:"휘점·빛샘"},
-    {label:"터치 테스트", color:null,     note:"격자 전체 문지르기"}
+    {label:"터치 테스트", color:null,     note:"격자 전체 문지르기"},
+    {label:"사운드·진동·마이크", color:null, note:"스피커 L/R · 진동 · 마이크"}
   ];
-  var TOUCH_IDX = STEPS.length - 1;
+  var TOUCH_IDX = 7;   /* 터치 테스트 */
+  var HW_IDX = 8;      /* 사운드·진동·마이크 */
 
   var stage = document.getElementById("stage");
   var hint = document.getElementById("hint");
@@ -411,7 +537,7 @@
   }
 
   function refreshHint(){
-    if (idx === TOUCH_IDX || panelOpen) return;
+    if (idx === TOUCH_IDX || idx === HW_IDX || panelOpen) return;
     var h = hintLine();
     showHint(h.main, h.sub, h.ms);
   }
@@ -429,7 +555,7 @@
      어둡게 뒤집는 경우가 있어, 검수 색은 캔버스 2D 컨텍스트로 직접 채운다. */
   function paintColorCanvas(){
     if (!colorCanvas || !cctx) return;
-    if (idx === TOUCH_IDX){
+    if (idx === TOUCH_IDX || idx === HW_IDX){
       colorCanvas.style.display = "none";
       return;
     }
@@ -461,6 +587,10 @@
     paintUI();
 
     var isTouch = (idx === TOUCH_IDX);
+    var isHw = (idx === HW_IDX);
+    if (!isHw) hwStopAll();   /* 사운드·진동·마이크에서 나가면 재생·마이크를 즉시 정지 */
+    hwLayer.classList.toggle("on", isHw);
+    document.body.classList.toggle("hw-mode", isHw);
     touchLayer.classList.toggle("on", isTouch);
     touchBar.classList.toggle("on", isTouch);
     document.body.classList.toggle("touch-mode", isTouch);
@@ -470,6 +600,10 @@
       if (hintTimer) clearTimeout(hintTimer);
       setHintVisible(false);
       layout();
+    } else if (isHw){
+      if (hintTimer) clearTimeout(hintTimer);
+      setHintVisible(false);
+      buildDots();
     } else {
       buildDots();
       var h = hintLine();
@@ -657,7 +791,7 @@
 
   stage.addEventListener("pointerdown", function(e){
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    if (idx === TOUCH_IDX) return;
+    if (idx === TOUCH_IDX || idx === HW_IDX) return;
     var closing = panelOpen || (panelDismissAt && Date.now() - panelDismissAt < 500);
     down = { id:e.pointerId, x:e.clientX, y:e.clientY, t:Date.now(), long:false, panel:closing };
     if (longTimer) clearTimeout(longTimer);
@@ -695,7 +829,7 @@
     var info = tapInfo;
     tapInfo = null;
     if (!info) return;                 /* 롱프레스·드래그였으면 무시 */
-    if (idx === TOUCH_IDX) return;
+    if (idx === TOUCH_IDX || idx === HW_IDX) return;
     if (info.panel || panelOpen){ closePanel(); return; }
     handleTap();
   });
@@ -723,6 +857,8 @@
   }, true);
 
   document.addEventListener("keydown", function(e){
+    /* 사운드·진동·마이크 화면에서는 포커스된 버튼의 Enter/Space 조작을 그대로 둔다 */
+    if ((e.key === " " || e.key === "Enter") && e.target && e.target.closest && e.target.closest("#hwLayer")) return;
     if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") { next(); e.preventDefault(); }
     else if (e.key === "ArrowLeft") { prev(); e.preventDefault(); }
     else if (e.key === "Escape" || e.key === "m" || e.key === "M") { togglePanel(); }
@@ -910,10 +1046,454 @@
     window.visualViewport.addEventListener("resize", paintColorCanvas);
   }
   document.addEventListener("visibilitychange", function(){
-    if (document.hidden) return;
+    if (document.hidden){
+      /* 화면을 벗어나면 마이크·재생을 열어 둔 채 두지 않는다 */
+      if (idx === HW_IDX) hwStopAll();
+      return;
+    }
     paintColorCanvas();
     if (idx === TOUCH_IDX) layout();
   });
+
+  /* ================= 사운드 · 진동 · 마이크 =================
+     중고폰 매입 검수 9단계. 스피커 좌/우 채널, 진동, 마이크 입력을 한 화면에서 확인한다.
+     다른 단계로 넘어가거나 화면을 벗어나면 재생·녹음·마이크 스트림을 즉시 정리한다. */
+  var hwLayer     = document.getElementById("hwLayer");
+  var spkBtns     = hwLayer ? hwLayer.querySelectorAll("[data-pan]") : [];
+  var spkStatusEl = document.getElementById("spkStatus");
+  var vibBtn      = document.getElementById("vibBtn");
+  var vibStatusEl = document.getElementById("vibStatus");
+  var micBtn      = document.getElementById("micBtn");
+  var micBtnLabel = document.getElementById("micBtnLabel");
+  var micBtnSub   = document.getElementById("micBtnSub");
+  var micStatusEl = document.getElementById("micStatus");
+  var micDbEl     = document.getElementById("micDb");
+  var meterFill   = document.getElementById("meterFill");
+
+  var SPK_IDLE = "버튼을 누르면 3음이 약 1.2초 재생됩니다";
+  var VIB_IDLE = "갤럭시: 세 번 울립니다";
+  var MIC_IDLE = "레벨 바가 움직이면 마이크 정상";
+  var MIC_SEC  = 3;
+
+  function setSt(el, text, warn){
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle("warn", !!warn);
+  }
+
+  function isIOS(){
+    var ua = navigator.userAgent || "";
+    if (/iPad|iPhone|iPod/.test(ua)) return true;
+    return /Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1;  /* iPadOS 13+ */
+  }
+
+  /* ---------- ① 스피커 (Web Audio · StereoPanner) ---------- */
+  var actx = null, toneStopTimer = null, toneBtn = null, toneOscs = [];
+
+  function audioCtxGet(){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try{
+      if (!actx) actx = new AC();
+      if (actx.state === "suspended" && actx.resume) actx.resume();
+      return actx;
+    }catch(e){ return null; }
+  }
+
+  /* pan: -1(좌) · 0(양쪽) · +1(우). StereoPanner가 없으면 채널 병합으로 같은 효과 */
+  function connectPanned(ac, node, pan){
+    if (ac.createStereoPanner){
+      var p = ac.createStereoPanner();
+      try{ p.pan.setValueAtTime(pan, ac.currentTime); }catch(e){ p.pan.value = pan; }
+      node.connect(p);
+      return p;
+    }
+    if (ac.createChannelMerger && ac.createGain){
+      var a = (pan + 1) / 2;
+      var merger = ac.createChannelMerger(2);
+      var gL = ac.createGain(), gR = ac.createGain();
+      gL.gain.value = Math.cos(a * Math.PI / 2);
+      gR.gain.value = Math.sin(a * Math.PI / 2);
+      node.connect(gL); gL.connect(merger, 0, 0);
+      node.connect(gR); gR.connect(merger, 0, 1);
+      return merger;
+    }
+    return node;
+  }
+
+  function stopTone(){
+    if (toneStopTimer){ clearTimeout(toneStopTimer); toneStopTimer = null; }
+    for (var i = 0; i < toneOscs.length; i++){
+      try{ toneOscs[i].stop(); }catch(e){}
+      try{ toneOscs[i].disconnect(); }catch(e){}
+    }
+    toneOscs = [];
+    if (toneBtn){ toneBtn.classList.remove("on"); toneBtn = null; }
+  }
+
+  function playTone(pan, btn){
+    var ac = audioCtxGet();
+    if (!ac){ setSt(spkStatusEl, "이 브라우저에서는 소리 테스트를 지원하지 않아요", true); return; }
+    stopTone();
+
+    var freqs = [523.25, 659.25, 783.99];   /* C5 · E5 · G5 */
+    var len = 0.32, gap = 0.07;             /* 총 약 1.2초 */
+    var t0 = ac.currentTime + 0.04;
+    toneOscs = [];
+
+    for (var i = 0; i < freqs.length; i++){
+      var st = t0 + i * (len + gap);
+      var osc = ac.createOscillator();
+      var g = ac.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freqs[i], st);
+      /* 작은 스피커에서도 들리게 앞뒤로 부드럽게 여닫는 엔벨로프 */
+      g.gain.setValueAtTime(0.0001, st);
+      g.gain.exponentialRampToValueAtTime(0.30, st + 0.025);
+      g.gain.exponentialRampToValueAtTime(0.0001, st + len);
+      osc.connect(g);
+      connectPanned(ac, g, pan).connect(ac.destination);
+      osc.start(st);
+      osc.stop(st + len + 0.03);
+      toneOscs.push(osc);
+    }
+
+    toneBtn = btn;
+    btn.classList.add("on");
+    setSt(spkStatusEl, pan < 0 ? "좌(L) 채널 재생 중" : pan > 0 ? "우(R) 채널 재생 중" : "양쪽(L+R) 재생 중", false);
+    toneStopTimer = setTimeout(function(){
+      stopTone();
+      setSt(spkStatusEl, SPK_IDLE, false);
+    }, 1220);
+  }
+
+  /* ---------- ② 진동 ---------- */
+  var vibTimer = null;
+
+  function doVibrate(){
+    if (vibTimer){ clearTimeout(vibTimer); vibTimer = null; }
+    if (vibBtn) vibBtn.classList.remove("on");
+
+    if (isIOS() || typeof navigator.vibrate !== "function"){
+      setSt(vibStatusEl, "아이폰 웹에서는 진동 테스트가 제한돼요 (무음 스위치로 확인)", true);
+      return;
+    }
+    var ok = false;
+    try{ ok = navigator.vibrate([220, 100, 220, 100, 300]); }catch(e){ ok = false; }
+    if (ok === false){
+      setSt(vibStatusEl, "이 브라우저에서는 진동이 막혀 있어요 · 설정에서 진동 허용 확인", true);
+      return;
+    }
+    if (vibBtn) vibBtn.classList.add("on");
+    setSt(vibStatusEl, "진동 3회 울리는 중…", false);
+    vibTimer = setTimeout(function(){
+      if (vibBtn) vibBtn.classList.remove("on");
+      setSt(vibStatusEl, VIB_IDLE, false);
+      vibTimer = null;
+    }, 950);
+  }
+
+  /* ---------- ③ 마이크 (레벨 미터 + 3초 녹음 후 자동 재생) ---------- */
+  var micAudio = null;
+  var mic = { state:"idle", stream:null, ctx:null, analyser:null, raf:0, rec:null,
+              chunks:[], stopTimer:null, cdTimer:null, abort:false, url:null };
+
+  /* iOS는 사용자 제스처 밖에서 시작한 audio.play()를 막는다.
+     버튼 클릭(제스처) 때 미리 play()를 한 번 걸어 두면 3초 뒤 자동 재생이 열린다. */
+  var SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+
+  function micAudioEl(){
+    if (!micAudio){
+      try{ micAudio = new Audio(); micAudio.preload = "auto"; }catch(e){ micAudio = null; }
+    }
+    return micAudio;
+  }
+
+  function setMeter(level){
+    if (!meterFill) return;
+    var v = Math.max(0, Math.min(1, level || 0));
+    meterFill.style.width = (Math.round(v * 1000) / 10) + "%";
+  }
+
+  function micCleanup(){
+    if (mic.raf){ cancelAnimationFrame(mic.raf); mic.raf = 0; }
+    if (mic.stopTimer){ clearTimeout(mic.stopTimer); mic.stopTimer = null; }
+    if (mic.cdTimer){ clearInterval(mic.cdTimer); mic.cdTimer = null; }
+    if (mic.rec){
+      var r = mic.rec; mic.rec = null;
+      try{ r.onstop = null; r.ondataavailable = null; if (r.state !== "inactive") r.stop(); }catch(e){}
+    }
+    if (mic.stream){
+      try{ mic.stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+      mic.stream = null;
+    }
+    mic.analyser = null;
+    if (mic.ctx){ try{ mic.ctx.close(); }catch(e){} mic.ctx = null; }
+    mic.chunks = [];
+    setMeter(0);
+    if (micDbEl) micDbEl.textContent = "—";
+  }
+
+  function stopMicPlay(revoke){
+    var au = micAudio;
+    if (au){
+      try{ au.onended = null; }catch(e){}
+      try{ au.pause(); }catch(e){}
+    }
+    if (revoke && mic.url){ try{ URL.revokeObjectURL(mic.url); }catch(e){} }
+    mic.url = null;
+    if (mic.state === "play") mic.state = "idle";
+  }
+
+  function resetMicUI(msg, warn){
+    if (micBtn) micBtn.classList.remove("on");
+    if (micBtnLabel) micBtnLabel.textContent = "마이크 3초 녹음·재생";
+    if (micBtnSub) micBtnSub.textContent = "눌러서 권한 허용";
+    setMeter(0);
+    if (micDbEl) micDbEl.textContent = "—";
+    setSt(micStatusEl, msg || MIC_IDLE, warn);
+  }
+
+  function micErrorText(err){
+    var n = (err && err.name) || "";
+    if (n === "NotAllowedError" || n === "SecurityError" || n === "PermissionDeniedError")
+      return "마이크 권한이 꺼져 있어요 · 허용 후 다시 눌러 주세요";
+    if (n === "NotFoundError" || n === "DevicesNotFoundError") return "마이크를 찾을 수 없어요";
+    if (n === "NotReadableError" || n === "TrackStartError") return "다른 앱이 마이크를 쓰고 있어요 · 통화·녹음 앱을 닫아 주세요";
+    return "마이크를 열지 못했어요 · 권한을 확인해 주세요";
+  }
+
+  function startMeter(stream){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try{
+      var ac = new AC();
+      mic.ctx = ac;
+      var src = ac.createMediaStreamSource(stream);
+      var an = ac.createAnalyser();
+      an.fftSize = 1024;
+      an.smoothingTimeConstant = 0.55;
+      src.connect(an);
+      mic.analyser = an;
+      var buf = new Uint8Array(an.fftSize);
+      var tick = function(){
+        if (mic.analyser !== an){ setMeter(0); return; }
+        an.getByteTimeDomainData(buf);
+        var sum = 0;
+        for (var i = 0; i < buf.length; i++){
+          var v = (buf[i] - 128) / 128;
+          sum += v * v;
+        }
+        var rms = Math.sqrt(sum / buf.length);
+        setMeter(Math.pow(rms, 0.6) * 1.9);
+        if (micDbEl) micDbEl.textContent = rms > 0.0008 ? Math.round(20 * Math.log10(rms)) + " dB" : "무음";
+        mic.raf = requestAnimationFrame(tick);
+      };
+      mic.raf = requestAnimationFrame(tick);
+    }catch(e){}
+  }
+
+  function updateRecCountdown(t0){
+    var left = Math.max(0, MIC_SEC - (Date.now() - t0) / 1000);
+    setSt(micStatusEl, "● 녹음 중 · " + Math.max(1, Math.ceil(left)) + "초 남음", false);
+  }
+
+  function stopRecorder(){
+    if (mic.stopTimer){ clearTimeout(mic.stopTimer); mic.stopTimer = null; }
+    if (mic.cdTimer){ clearInterval(mic.cdTimer); mic.cdTimer = null; }
+    var r = mic.rec;
+    if (!r) return;
+    try{ if (r.state !== "inactive") r.stop(); }catch(e){}
+  }
+
+  function finishRecording(mime){
+    var chunks = mic.chunks;
+    var aborted = mic.abort;
+    mic.abort = false;
+    mic.chunks = [];
+    mic.rec = null;
+    micCleanup();
+
+    if (aborted){ mic.state = "idle"; resetMicUI(MIC_IDLE, false); return; }
+
+    var blob = null;
+    try{ blob = new Blob(chunks, { type: mime || "audio/webm" }); }catch(e){ blob = null; }
+    if (!blob || !blob.size){
+      mic.state = "idle";
+      resetMicUI("녹음된 소리가 없어요 · 다시 눌러 주세요", true);
+      return;
+    }
+
+    var au = micAudioEl();
+    if (!au){
+      mic.state = "idle";
+      resetMicUI("이 브라우저에서는 녹음 재생을 지원하지 않아요", true);
+      return;
+    }
+
+    try{ mic.url = URL.createObjectURL(blob); }catch(e){ mic.url = null; }
+    if (!mic.url){
+      mic.state = "idle";
+      resetMicUI("녹음 파일을 만들지 못했어요 · 다시 눌러 주세요", true);
+      return;
+    }
+
+    mic.state = "play";
+    if (micBtn) micBtn.classList.remove("on");
+    if (micBtnLabel) micBtnLabel.textContent = "다시 녹음";
+    if (micBtnSub) micBtnSub.textContent = "누르면 새로 3초 녹음";
+    setSt(micStatusEl, "녹음 재생 중 · 소리가 들리는지 확인", false);
+
+    try{ au.onended = null; }catch(e){}
+    au.onended = function(){
+      mic.state = "idle";
+      stopMicPlay(true);
+      resetMicUI("재생 끝 · 다시 눌러 반복", false);
+    };
+    try{ au.src = mic.url; }catch(e){}
+
+    var pr = null;
+    try{ pr = au.play(); }catch(e){ pr = null; }
+    if (pr && pr.then){
+      pr["catch"](function(){
+        mic.state = "idle";
+        setSt(micStatusEl, "자동 재생이 막혔어요 · 버튼을 다시 눌러 주세요", true);
+      });
+    }
+  }
+
+  function startRecorder(stream){
+    var MR = window.MediaRecorder;
+    var mime = "";
+    if (MR && typeof MR.isTypeSupported === "function"){
+      var types = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm", "audio/ogg;codecs=opus"];
+      for (var i = 0; i < types.length; i++){
+        if (MR.isTypeSupported(types[i])){ mime = types[i]; break; }
+      }
+    }
+
+    var rec = null;
+    if (MR){
+      try{ rec = mime ? new MR(stream, { mimeType:mime }) : new MR(stream); }catch(e){ rec = null; }
+    }
+
+    /* 녹음 미지원: 3초 동안 레벨 미터만 보여 주고 끝낸다 */
+    if (!rec){
+      mic.state = "rec";
+      if (micBtn) micBtn.classList.add("on");
+      if (micBtnLabel) micBtnLabel.textContent = "레벨 확인 중…";
+      if (micBtnSub) micBtnSub.textContent = "3초 뒤 자동 종료";
+      setSt(micStatusEl, "이 브라우저는 녹음을 지원하지 않아요 · 레벨 바로 확인", true);
+      mic.stopTimer = setTimeout(function(){
+        mic.state = "idle";
+        micCleanup();
+        resetMicUI("레벨 확인 끝 · 다시 눌러 반복", false);
+      }, MIC_SEC * 1000);
+      return;
+    }
+
+    mic.rec = rec;
+    mic.chunks = [];
+    mic.state = "rec";
+    rec.ondataavailable = function(ev){ if (ev.data && ev.data.size) mic.chunks.push(ev.data); };
+    rec.onstop = function(){ finishRecording(mime); };
+
+    if (micBtn) micBtn.classList.add("on");
+    if (micBtnLabel) micBtnLabel.textContent = "녹음 중지";
+    if (micBtnSub) micBtnSub.textContent = "다시 누르면 중단";
+
+    var startedAt = Date.now();
+    updateRecCountdown(startedAt);
+    mic.cdTimer = setInterval(function(){ updateRecCountdown(startedAt); }, 200);
+    mic.stopTimer = setTimeout(stopRecorder, MIC_SEC * 1000);
+
+    try{ rec.start(); }
+    catch(e){
+      mic.rec = null;
+      mic.state = "idle";
+      micCleanup();
+      resetMicUI("녹음을 시작하지 못했어요 · 다시 눌러 주세요", true);
+    }
+  }
+
+  function onMicBtn(){
+    if (mic.state === "starting" || mic.state === "rec"){
+      mic.state = "idle";
+      micCleanup();
+      resetMicUI("중단했어요 · 다시 누르면 3초 녹음", false);
+      return;
+    }
+
+    if (!(location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")){
+      setSt(micStatusEl, "HTTPS 주소에서만 마이크를 쓸 수 있어요", true);
+      return;
+    }
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
+      setSt(micStatusEl, "이 브라우저는 마이크 입력을 지원하지 않아요", true);
+      return;
+    }
+
+    stopMicPlay(true);
+    micCleanup();
+    mic.abort = false;
+    mic.state = "starting";
+
+    /* iOS 자동 재생 허용: 이 클릭(제스처) 안에서 오디오 요소를 한 번 열어 둔다 */
+    var au = micAudioEl();
+    if (au){
+      try{
+        au.src = SILENT_WAV;
+        var pp = au.play();
+        if (pp && pp["catch"]) pp["catch"](function(){});
+      }catch(e){}
+    }
+
+    if (micBtn) micBtn.classList.add("on");
+    if (micBtnLabel) micBtnLabel.textContent = "마이크 여는 중…";
+    if (micBtnSub) micBtnSub.textContent = "권한 창이 뜨면 허용";
+    setSt(micStatusEl, "마이크 권한을 허용해 주세요", false);
+
+    navigator.mediaDevices.getUserMedia({ audio:true }).then(function(stream){
+      if (mic.state !== "starting"){
+        try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+        return;
+      }
+      mic.stream = stream;
+      startMeter(stream);
+      startRecorder(stream);
+    })["catch"](function(err){
+      if (mic.state !== "starting") return;
+      mic.state = "idle";
+      micCleanup();
+      resetMicUI(micErrorText(err), true);
+    });
+  }
+
+  /* 이 화면을 떠날 때: 재생·녹음·마이크 스트림을 모두 내린다 */
+  function hwStopAll(){
+    stopTone();
+    setSt(spkStatusEl, SPK_IDLE, false);
+    if (vibTimer){ clearTimeout(vibTimer); vibTimer = null; }
+    if (vibBtn) vibBtn.classList.remove("on");
+    setSt(vibStatusEl, VIB_IDLE, false);
+    mic.abort = true;
+    stopRecorder();
+    stopMicPlay(true);
+    micCleanup();
+    mic.state = "idle";
+    resetMicUI(MIC_IDLE, false);
+  }
+
+  if (hwLayer){
+    Array.prototype.forEach.call(spkBtns, function(b){
+      b.addEventListener("click", function(e){
+        e.stopPropagation();
+        playTone(parseFloat(b.getAttribute("data-pan")) || 0, b);
+      });
+    });
+    if (vibBtn) vibBtn.addEventListener("click", function(e){ e.stopPropagation(); doVibrate(); });
+    if (micBtn) micBtn.addEventListener("click", function(e){ e.stopPropagation(); onMicBtn(); });
+  }
 
   /* ---------------- 브라우저별 안내 ---------------- */
   /* 삼성 인터넷은 '웹 콘텐츠에 어두운 화면 모드 강제 적용'이 켜져 있으면 페이지 색을 반전시킨다.
