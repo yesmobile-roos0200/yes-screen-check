@@ -166,6 +166,19 @@
     white-space:nowrap;
   }
   #resetBtn:active{background:rgba(255,255,255,.3);}
+  /* 터치 테스트에서 순백색으로 바로 돌아가는 버튼 */
+  #firstBtn{
+    appearance:none;
+    pointer-events:auto;
+    font:700 13px/1 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    color:#0b0b0c;
+    background:rgba(255,255,255,.9);
+    border:1px solid rgba(255,255,255,.9);
+    border-radius:999px;
+    padding:11px 14px;
+    white-space:nowrap;
+  }
+  #firstBtn:active{background:#fff;}
 
   /* 터치 모드에서는 메뉴 버튼을 상단 가운데로 옮겨 네 모서리를 비움 */
   body.touch-mode #menuBtn{
@@ -191,6 +204,8 @@
     box-shadow:0 -12px 40px rgba(0,0,0,.5);
   }
   #panel.on{transform:translateY(0);}
+  /* 작은 화면에서도 시트가 화면 위로 넘치지 않게 */
+  #panel{max-height:calc(100vh - 10px); max-height:calc(100dvh - 10px); overflow-y:auto; overscroll-behavior:contain;}
   #panel .grip{
     width:40px; height:4px; border-radius:2px;
     background:rgba(255,255,255,.28);
@@ -201,7 +216,8 @@
     color:rgba(255,255,255,.55);
     margin:0 2px 9px;
   }
-  #chips{
+  #panel .ttl.ttl2{margin-top:14px;}
+  .chips{
     display:grid; grid-template-columns:1fr 1fr; gap:8px;
   }
   .chip{
@@ -272,8 +288,8 @@
     #panelTools{margin-top:8px;}
     #fsBtn{padding:7px 12px;}
   }
-  /* 9개 항목: 마지막(사운드·진동·마이크) 칩은 한 줄 전체로 */
-  #chips .chip:last-child:nth-child(odd){grid-column:1 / -1;}
+  /* 기본 검수 3개: 마지막(터치 테스트) 칩은 한 줄 전체로 */
+  #chipsBasic .chip:last-child:nth-child(odd){grid-column:1 / -1;}
 
   /* ---------- 사운드 · 진동 · 마이크 ---------- */
   #hwLayer{
@@ -325,6 +341,20 @@
   .hwBtn.on{background:#35E07C; color:#062312; border-color:#35E07C;}
   .hwBtn.on small{color:rgba(0,0,0,.5);}
   .hwBtn.wide{width:100%; min-height:50px;}
+  /* 기능 테스트 → 터치 테스트 한 번에 */
+  #hwNext{
+    appearance:none; -webkit-appearance:none;
+    font-family:inherit;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; min-height:54px; margin-top:2px;
+    background:#EDF3EE; color:#0B0B0C;
+    border:1px solid rgba(255,255,255,.55);
+    border-radius:16px;
+    font-size:15px; font-weight:700; letter-spacing:-.3px;
+    box-shadow:0 6px 18px rgba(0,0,0,.28);
+  }
+  #hwNext span{font-size:10.5px; font-weight:600; color:rgba(0,0,0,.42); letter-spacing:-.1px;}
+  #hwNext:active{background:#fff; transform:scale(.99);}
   #micMeter{
     position:relative; height:11px; margin-top:10px;
     background:rgba(255,255,255,.14); border-radius:999px; overflow:hidden;
@@ -359,6 +389,8 @@
     #hwLayer{padding-top:calc(env(safe-area-inset-top, 0px) + 46px);}
     .hwHead{display:none;}
     .hwBtn small{display:none;}
+    #hwNext{min-height:48px; font-size:14px;}
+    #hwNext span{display:none;}
   }
 </style>
 </head>
@@ -376,7 +408,7 @@
     <div class="hwCard">
       <div class="hwHead">
         <h1>사운드 · 진동 · 마이크</h1>
-        <span>매입 검수 9단계</span>
+        <span>기본 검수 2 / 3</span>
       </div>
 
       <section class="hwSec">
@@ -404,6 +436,8 @@
           <span id="micDb">—</span>
         </div>
       </section>
+
+      <button id="hwNext" type="button">다음: 터치 테스트 ›<span>격자 전체 문지르기</span></button>
     </div>
   </div>
 
@@ -416,6 +450,7 @@
   <div id="touchBar">
     <div id="badge">터치 0 / 0 칸</div>
     <button id="resetBtn" type="button">초기화</button>
+    <button id="firstBtn" type="button" aria-label="처음 화면(순백색)으로">처음</button>
   </div>
 </div>
 
@@ -423,8 +458,10 @@
 
 <div id="panel" role="dialog" aria-label="검수 항목 선택">
   <div class="grip"></div>
-  <p class="ttl">검수 항목</p>
-  <div id="chips"></div>
+  <p class="ttl">기본 검수</p>
+  <div id="chipsBasic" class="chips"></div>
+  <p class="ttl ttl2">세부 색상 (선택)</p>
+  <div id="chipsDetail" class="chips"></div>
   <div id="panelTools">
     <button id="fsBtn" type="button">전체화면</button>
   </div>
@@ -441,19 +478,24 @@
 (function(){
   "use strict";
 
+  /* 기본 검수 동선: 순백색 → 사운드·진동·마이크 → 터치 테스트 (탭으로 3단계 순환)
+     세부 색상 6종은 메뉴 패널에서만 고르고, 고른 뒤 탭하면 세부 색상끼리 넘어간 다음 순백색으로 돌아온다. */
   var STEPS = [
-    {label:"순백색 흰색", color:"#FFFFFF", note:"가장 밝은 화면 · 잔상·황변"},
-    {label:"10% 회색",  color:"#1A1A1A", note:"약한 잔상·번인"},
-    {label:"파란색",    color:"#0000FF", note:"블루 소자 잔상"},
-    {label:"빨간색",    color:"#FF0000", note:"적색 얼룩"},
-    {label:"초록색",    color:"#00FF00", note:"녹색 얼룩"},
-    {label:"50% 회색",  color:"#808080", note:"중간 밝기 얼룩"},
-    {label:"검정색",    color:"#000000", note:"휘점·빛샘"},
-    {label:"터치 테스트", color:null,     note:"격자 전체 문지르기"},
-    {label:"사운드·진동·마이크", color:null, note:"스피커 L/R · 진동 · 마이크"}
+    {label:"순백색 흰색", color:"#FFFFFF", note:"가장 밝은 화면 · 잔상·황변", group:"basic"},
+    {label:"사운드·진동·마이크", color:null, note:"스피커 L/R · 진동 · 마이크", group:"basic"},
+    {label:"터치 테스트", color:null,   note:"격자 전체 문지르기", group:"basic"},
+    {label:"10% 회색",  color:"#1A1A1A", note:"약한 잔상·번인", group:"detail"},
+    {label:"파란색",    color:"#0000FF", note:"블루 소자 잔상", group:"detail"},
+    {label:"빨간색",    color:"#FF0000", note:"적색 얼룩", group:"detail"},
+    {label:"초록색",    color:"#00FF00", note:"녹색 얼룩", group:"detail"},
+    {label:"50% 회색",  color:"#808080", note:"중간 밝기 얼룩", group:"detail"},
+    {label:"검정색",    color:"#000000", note:"휘점·빛샘", group:"detail"}
   ];
-  var TOUCH_IDX = 7;   /* 터치 테스트 */
-  var HW_IDX = 8;      /* 사운드·진동·마이크 */
+  var WHITE_IDX = 0;   /* 순백색 */
+  var HW_IDX = 1;      /* 사운드·진동·마이크 */
+  var TOUCH_IDX = 2;   /* 터치 테스트 */
+  var BASIC_IDX = [0, 1, 2];              /* 기본 검수 동선 */
+  var DETAIL_IDX = [3, 4, 5, 6, 7, 8];    /* 메뉴 패널 전용 세부 색상 */
 
   var stage = document.getElementById("stage");
   var hint = document.getElementById("hint");
@@ -463,7 +505,8 @@
   var themeColor = document.getElementById("themeColor");
   var menuBtn = document.getElementById("menuBtn");
   var panel = document.getElementById("panel");
-  var chips = document.getElementById("chips");
+  var chipsBasic = document.getElementById("chipsBasic");
+  var chipsDetail = document.getElementById("chipsDetail");
   var closeBtn = document.getElementById("closeBtn");
   var prevBtn = document.getElementById("prevBtn");
   var nextBtn = document.getElementById("nextBtn");
@@ -471,6 +514,8 @@
   var touchLayer = document.getElementById("touchLayer");
   var badge = document.getElementById("badge");
   var resetBtn = document.getElementById("resetBtn");
+  var firstBtn = document.getElementById("firstBtn");
+  var hwNextBtn = document.getElementById("hwNext");
   var touchBar = document.getElementById("touchBar");
   var fsBtn = document.getElementById("fsBtn");
   var colorCanvas = document.getElementById("colorCanvas");
@@ -530,9 +575,18 @@
         ms: 5000
       };
     }
+    var step = STEPS[idx];
+    var sub;
+    if (step.group === "detail"){
+      sub = "탭하면 다음 색 · 길게 누르면 메뉴";
+    } else if (idx === WHITE_IDX){
+      sub = "화면 밝기 최대 · 탭하면 다음 · 길게 누르면 메뉴";
+    } else {
+      sub = "탭하면 다음 · 길게 누르면 메뉴";
+    }
     return {
-      main: STEPS[idx].label + " · " + STEPS[idx].note,
-      sub: (idx === 0 ? "화면 밝기 최대 · 탭하면 다음 · 길게 누르면 메뉴" : "탭하면 다음 · 길게 누르면 메뉴"),
+      main: step.label + " · " + step.note,
+      sub: sub,
       ms: 2200
     };
   }
@@ -544,9 +598,11 @@
   }
 
   function buildDots(){
+    /* 기본 검수는 3개, 세부 색상은 6개 점으로 현재 위치를 보여 준다 */
+    var list = (STEPS[idx].group === "detail") ? DETAIL_IDX : BASIC_IDX;
     var html = "";
-    for (var i=0;i<STEPS.length;i++){
-      html += '<i' + (i===idx ? ' class="on"' : '') + '></i>';
+    for (var i=0;i<list.length;i++){
+      html += '<i' + (list[i]===idx ? ' class="on"' : '') + '></i>';
     }
     dots.innerHTML = html;
   }
@@ -615,21 +671,39 @@
   }
 
   function go(n){
-    idx = (n + STEPS.length) % STEPS.length;
+    idx = ((n % STEPS.length) + STEPS.length) % STEPS.length;
     closePanel();
     render();
   }
-  function next(){ go(idx + 1); }
-  function prev(){ go(idx - 1); }
+
+  /* 현재 화면에서 탭했을 때 갈 다음 화면 */
+  function nextIdxFrom(i){
+    var list = (STEPS[i].group === "detail") ? DETAIL_IDX : BASIC_IDX;
+    var p = list.indexOf(i);
+    if (p < 0 || p === list.length - 1) return WHITE_IDX;   /* 마지막(검정색·터치) 다음은 순백색 */
+    return list[p + 1];
+  }
+
+  function prevIdxFrom(i){
+    var list = (STEPS[i].group === "detail") ? DETAIL_IDX : BASIC_IDX;
+    var p = list.indexOf(i);
+    if (p < 0) return WHITE_IDX;
+    if (p === 0) return (STEPS[i].group === "detail") ? WHITE_IDX : TOUCH_IDX;
+    return list[p - 1];
+  }
+
+  function next(){ go(nextIdxFrom(idx)); }
+  function prev(){ go(prevIdxFrom(idx)); }
 
   function vibrate(ms){
     try{ if (navigator.vibrate) navigator.vibrate(ms); }catch(e){}
   }
 
   /* ---------------- 선택 패널 ---------------- */
-  function buildChips(){
+  function chipsInto(box, list){
     var frag = document.createDocumentFragment();
-    STEPS.forEach(function(s, i){
+    list.forEach(function(i){
+      var s = STEPS[i];
       var b = document.createElement("button");
       b.type = "button";
       b.className = "chip";
@@ -645,19 +719,19 @@
       sm.textContent = s.note;
       tx.appendChild(nm); tx.appendChild(sm);
       b.appendChild(sw); b.appendChild(tx);
-      b.addEventListener("click", function(){
-        idx = i;
-        closePanel();
-        render();
-      });
+      b.addEventListener("click", function(){ go(i); });
       frag.appendChild(b);
     });
-    chips.appendChild(frag);
+    box.appendChild(frag);
+  }
+  function buildChips(){
+    chipsInto(chipsBasic, BASIC_IDX);
+    chipsInto(chipsDetail, DETAIL_IDX);
   }
   function syncChips(){
-    var list = chips.querySelectorAll(".chip");
+    var list = panel.querySelectorAll(".chip");
     for (var i=0;i<list.length;i++){
-      list[i].classList.toggle("on", i === idx);
+      list[i].classList.toggle("on", Number(list[i].dataset.i) === idx);
     }
   }
   function openPanel(){
@@ -836,7 +910,7 @@
   });
 
   function handleTap(){
-    /* 첫 탭: 순백색 그대로 전체화면만. 그 다음 탭부터 다음 색으로. */
+    /* 첫 탭: 순백색 그대로 전체화면만. 그 다음 탭부터 다음 화면으로. */
     if (waitingFirstTap()){
       fsFirstTapDone = true;
       vibrate(8);
@@ -1030,6 +1104,15 @@
   pathC.addEventListener("pointercancel", endStroke);
 
   resetBtn.addEventListener("click", function(e){ e.stopPropagation(); resetTouch(); });
+  if (firstBtn) firstBtn.addEventListener("click", function(e){
+    e.stopPropagation();
+    go(WHITE_IDX);
+    vibrate(6);
+  });
+  if (hwNextBtn) hwNextBtn.addEventListener("click", function(e){
+    e.stopPropagation();
+    go(TOUCH_IDX);
+  });
 
   /* ---------------- 크기 변화 ---------------- */
   var rTimer = null;
