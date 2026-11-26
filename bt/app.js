@@ -492,10 +492,12 @@
       return showWriteError('저장하지 못했습니다: ' + (res.error.message || ''));
     }
 
-    const id = res.data && res.data.id ? res.data.id : state.postId;
+    const row = Array.isArray(res.data) ? res.data[0] : res.data;
+    const id = (row && row.id) || state.postId;
     state.dirty = true;
     state.loaded = false;
     toast(state.editing ? '수정했습니다.' : '저장했습니다.');
+    if (!id) { location.hash = '#/list'; return; }
     const target = `#/p/${id}`;
     if (location.hash === target) await loadDetail(id, false);
     else location.hash = target;

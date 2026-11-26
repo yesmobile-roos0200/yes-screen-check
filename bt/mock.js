@@ -114,7 +114,8 @@
           rows.push(row);
           return row;
         });
-        return { data: this.cols === 'id' ? added.map((r) => ({ id: r.id })) : added, error: null, count: null };
+        const out = this.cols === 'id' ? added.map((r) => ({ id: r.id })) : added;
+        return { data: this.singleMode ? out[0] : out, error: null, count: null };
       }
       if (this.mode === 'update') {
         const target = applyFilters(rows, this);
