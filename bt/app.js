@@ -288,12 +288,10 @@
       : `${base} <b id="total-count">${state.total}</b>`;
     const counts = await fetchCommentCounts(state.posts.map((p) => p.id));
 
-    const offset = (state.page - 1) * PAGE_SIZE;
-    const rows = state.posts.map((p, i) => {
-      const no = state.total - offset - i;
+    const rows = state.posts.map((p) => {
       const cmt = counts.get(p.id) || 0;
       return `<tr>
-        <td class="col-no"><span class="cell-no">${p.is_pinned ? '📌' : ''}${p.is_pinned ? '' : no}</span></td>
+        <td class="col-no"><span class="cell-no">${p.is_pinned ? '📌 ' : ''}${p.id}</span></td>
         <td class="col-cat">${catChip(p.category)}</td>
         <td class="col-title">
           <a class="cell-title" href="#/p/${p.id}">${esc(p.title)}${cmt ? `<span class="cmt">(${cmt})</span>` : ''}</a>
@@ -590,6 +588,8 @@
       if (cat === state.category) return;
       state.category = cat;
       state.page = 1;
+      state.q = '';
+      $('#search-input').value = '';
       buildTabs();
       if (state.view !== 'list') { location.hash = '#/list'; }
       showView('list');
