@@ -2,6 +2,8 @@
 (() => {
   const params = new URLSearchParams(location.search);
   const START_LOGGED_OUT = params.get('session') === 'none';
+  const DENIED = params.get('denied') === '1';
+  const SETUP = params.get('setup') === '1';
   const USER = { id: '11111111-1111-1111-1111-111111111111', email: 'roos0200@gmail.com' };
   let session = START_LOGGED_OUT ? null : { user: USER, access_token: 'mock', expires_at: Math.floor(Date.now() / 1000) + 3600 };
   let seqPost = 1;
@@ -159,7 +161,10 @@
       async signOut() { session = null; if (client.__cb) client.__cb('SIGNED_OUT'); return { error: null }; }
     },
     async rpc(name) {
-      if (name === 'ai_board_whoami') return { data: [{ email: USER.email, is_member: true }], error: null };
+      if (name === 'ai_board_whoami') {
+        if (SETUP) return { data: null, error: { code: 'PGRST202', message: 'Could not find the function public.ai_board_whoami(email, is_member) in the schema cache' } };
+        return { data: [{ email: USER.email, is_member: !DENIED }], error: null };
+      }
       return { data: null, error: { code: 'PGRST202', message: 'function not found' } };
     },
     from(table) { return new Query(table); }
