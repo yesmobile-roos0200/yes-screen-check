@@ -136,6 +136,9 @@
     $('#view-list').hidden = v !== 'list';
     $('#view-detail').hidden = v !== 'detail';
     $('#view-write').hidden = v !== 'write';
+    const bar = $('.board-toolbar');
+    if (bar) bar.hidden = v !== 'list';
+    $('#tabs').hidden = v === 'write';
     window.scrollTo(0, 0);
   }
 
@@ -279,7 +282,10 @@
       return loadPosts();
     }
 
-    $('#total-count').textContent = state.total;
+    const base = state.category === ALL ? '전체 글' : esc(state.category) + ' 글';
+    $('#board-title').innerHTML = term
+      ? `‘${esc(term)}’ 검색 <b>${state.total}</b>건`
+      : `${base} <b id="total-count">${state.total}</b>`;
     const counts = await fetchCommentCounts(state.posts.map((p) => p.id));
 
     const offset = (state.page - 1) * PAGE_SIZE;
